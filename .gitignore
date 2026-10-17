@@ -1,0 +1,28 @@
+# Node.js (serveur de démo et tests)
+node_modules/
+npm-debug.log*
+*.log
+
+# Éditeurs et IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Fichiers système
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Secrets : tokens Home Assistant, identifiants, fichiers d'environnement
+.env
+.env.*
+*token*.txt
+instruction*.txt
+secrets.yaml
+
+# Archives et brouillons
+*.zip
+*.docx
+~$*
