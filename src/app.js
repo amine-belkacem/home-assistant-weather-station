@@ -198,8 +198,9 @@ function formatRainValue(stateObj) {
   if (stateObj.state === "unknown" || stateObj.state === "unavailable") return "N/A";
   const state = String(stateObj.state).toLowerCase();
   const deviceClass = stateObj.attributes?.device_class || "";
-  if (deviceClass === "moisture" || ["on","wet","rain"].includes(state)) return "Oui";
+  // "off" testé en premier : un capteur moisture à "off" (sec) doit afficher "Non"
   if (["off","dry","clear"].includes(state)) return "Non";
+  if (deviceClass === "moisture" || ["on","wet","rain"].includes(state)) return "Oui";
   return formatValue(stateObj);
 }
 
