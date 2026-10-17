@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Syntax check
+        run: |
+          set -e
+          node --check src/app.js
+          node --check tools/mock-ha-server.js
+
+      - name: Run tests
+        run: |
+          set -e
+          node --test tests/app.test.js
