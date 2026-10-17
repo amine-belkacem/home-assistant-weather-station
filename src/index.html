@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="description" content="Dashboard météo connecté - Capteurs ESP32 + Home Assistant + Open-Meteo" />
+  <meta name="theme-color" content="#1d3557" />
+  <title>Dashboard Météo Home Assistant</title>
+
+  <!-- Préconnexion aux serveurs externes : connexions TCP/TLS ouvertes en avance -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://tile.openstreetmap.org" />
+  <link rel="preconnect" href="https://api.open-meteo.com" />
+  <link rel="preconnect" href="https://geocoding-api.open-meteo.com" />
+
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+</head>
+<body>
+  <main class="appShell" role="main">
+
+
+    <!-- ============ BARRE DU HAUT : titre + horloge ============ -->
+    <header class="topBar">
+      <div>
+        <h1>Dashboard météo</h1>
+        <p class="subtitle">Capteurs ESP32 + météo externe</p>
+      </div>
+
+      <div class="clockBox" aria-label="Horloge">
+        <div class="clockLabel">Heure</div>
+        <div class="clock" id="clock" aria-live="off">--:--</div>
+      </div>
+    </header>
+
+    <div class="dashboardGrid">
+
+      <!-- ============ HÉRO : grosse température + emoji + statut ============ -->
+      <section class="panel heroPanel" aria-label="Température principale">
+        <div class="heroLeft">
+          <div class="smallTitle">Température capteur</div>
+
+          <div class="tempRow">
+            <div class="tempBlock">
+              <div class="temp" id="tempValue" aria-live="polite">--°C</div>
+              <div class="tempLabel">Température actuelle</div>
+            </div>
+            <div id="emoji" class="emoji" aria-hidden="true">🙂</div>
+          </div>
+        </div>
+
+        <div class="heroRight">
+          <div class="statusBadge" id="hint" role="status" aria-live="polite">Chargement…</div>
+        </div>
+      </section>
+
+      <!-- ============ CAPTEURS LOCAUX (HA) ============ -->
+      <section class="panel leftPanel" aria-label="Capteurs locaux">
+        <div class="boxTitle">Capteurs locaux Home Assistant</div>
+
+        <div class="btnCol" role="tablist" aria-label="Sélection du graphique">
+          <button class="pill active" id="btnTemperature" role="tab" aria-selected="true">Température</button>
+          <button class="pill" id="btnHumidity" role="tab" aria-selected="false">Humidité</button>
+          <button class="pill" id="btnPressure" role="tab" aria-selected="false">Pression</button>
+          <button class="pill" id="btnWind" role="tab" aria-selected="false">Vent</button>
+        </div>
+
+        <div class="statsGrid">
+          <div class="statCard"><span>Humidité</span><b id="humValue" aria-live="polite">N/A</b></div>
+          <div class="statCard"><span>Pression</span><b id="presValue" aria-live="polite">N/A</b></div>
+
+          <div class="statCard"><span>Vent</span><b id="windValue" aria-live="polite">N/A</b></div>
+          <div class="statCard"><span>Luminosité</span><b id="lightValue" aria-live="polite">N/A</b></div>
+          <div class="statCard"><span>Pluie</span><b id="rainValue" aria-live="polite">N/A</b></div>
+        </div>
+      </section>
+
+      <!-- ============ MÉTÉO EXTERNE (Open-Meteo) ============ -->
+      <section class="panel rightPanel" aria-label="Météo externe">
+        <div class="boxTitle">Météo externe</div>
+
+        <div class="weatherConfig">
+          <!-- label visuellement caché pour l'accessibilité -->
+          <label for="cityInput" class="visuallyHidden">Ville à rechercher</label>
+          <input type="text" id="cityInput" placeholder="Entrer une ville (ex: Metz, Paris, Lyon)" autocomplete="off" />
+          <button class="pill" id="btnSearchCity">Changer de ville</button>
+          <button class="pill" id="btnUseHomeLocation">Utiliser ma localisation</button>
+        </div>
+
+        <div class="weatherStatus" id="weatherStatus" role="status" aria-live="polite">
+          La météo se charge depuis la localisation Home Assistant.
+        </div>
+
+        <div class="panelScroll weatherContent">
+          <div class="weatherHeader">
+            <div>
+              <div class="weatherCity" id="extCity">--</div>
+              <div class="weatherDesc" id="extDesc">--</div>
+            </div>
+            <div id="extIcon" class="weatherIconEmoji" aria-hidden="true">☁️</div>
+          </div>
+
+          <div class="statsGrid weatherStatsGrid">
+            <div class="statCard"><span>Température</span><b id="extTemp">N/A</b></div>
+            <div class="statCard"><span>Ressentie</span><b id="extFeels">N/A</b></div>
+            <div class="statCard"><span>Humidité</span><b id="extHum">N/A</b></div>
+            <div class="statCard"><span>Pression</span><b id="extPres">N/A</b></div>
+            <div class="statCard"><span>Vent</span><b id="extWind">N/A</b></div>
+            <div class="statCard"><span>Pluie</span><b id="extRain">N/A</b></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CARTE LEAFLET ============ -->
+
+      <section class="panel mapPanel" aria-label="Localisation">
+        <div class="boxTitle">Localisation / carte</div>
+        <div class="map" id="map"></div>
+      </section>
+
+      <!-- ============ GRAPHIQUE Chart.js ============ -->
+      <section class="panel chartPanel" aria-label="Graphique des capteurs">
+        <div class="boxTitle" id="chartTitle">Variation température capteur</div>
+        <div class="chartWrap">
+          <canvas id="chart"></canvas>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- defer = téléchargé en parallèle, exécuté après parsing du DOM -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script defer src="./app.js"></script>
+</body>
+</html>

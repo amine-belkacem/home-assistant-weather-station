@@ -1,0 +1,563 @@
+/* =========================================================
+   1) RESET GLOBAL
+   On remet tout à zéro pour partir d'une base propre
+========================================================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Classe utilitaire pour cacher visuellement un label tout en
+   le gardant accessible pour les lecteurs d'écran */
+.visuallyHidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+/* =========================================================
+   2) VARIABLES GLOBALES (couleurs + tailles + espacements)
+   Tout est centralisé ici pour pouvoir changer le thème
+   en touchant un seul endroit du fichier
+========================================================= */
+:root {
+  /* Fond dégradé */
+  --bg1: #1d3557;
+
+  --bg2: #0f172a;
+  --bg3: #08101f;
+
+  /* Panneaux et cartes (effet glassmorphism) */
+  --panel: rgba(255,255,255,0.08);
+  --panel-border: rgba(255,255,255,0.12);
+  --card: rgba(255,255,255,0.07);
+  --card-border: rgba(255,255,255,0.10);
+
+  --text-soft: #cbd5e1;
+  --input-bg: #314764;
+
+  /* Espacements et arrondis */
+  --gap: 10px;
+  --radius: 20px;
+  --outer-pad: 10px;
+
+  /* Hauteurs principales */
+  --row-top-height: 120px;
+  --row-middle-min: 315px;
+  --row-bottom-min: 235px;
+
+  /* Tailles fluides (clamp = min, ideal, max) qui s'adaptent
+     à la taille de l'écran sans avoir besoin de breakpoints */
+  --temp-main-size: clamp(34px, 3vw, 54px);
+  --temp-label-size: clamp(12px, 0.85vw, 15px);
+  --emoji-size: clamp(32px, 2.5vw, 48px);
+  --weather-city-size: clamp(18px, 1.6vw, 30px);
+  --weather-desc-size: clamp(12px, 0.8vw, 15px);
+  --stat-label-size: clamp(11px, 0.72vw, 13px);
+  --stat-value-size: clamp(14px, 1vw, 22px);
+  --button-text-size: clamp(12px, 0.82vw, 14px);
+  --weather-icon-box: clamp(48px, 3.6vw, 68px);
+  --weather-icon-size: clamp(24px, 1.7vw, 34px);
+}
+
+/* =========================================================
+   3) BASE HTML / BODY
+========================================================= */
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  /* Dégradé radial qui part du coin haut gauche */
+  background: radial-gradient(circle at top left, var(--bg1) 0%, var(--bg2) 35%, var(--bg3) 100%);
+  color: #ffffff;
+  min-height: 100dvh;       /* 100dvh = mieux que 100vh sur mobile (gère la barre du navigateur) */
+  padding: var(--outer-pad);
+  overflow: hidden;
+}
+
+/* Accessibilité : si l'utilisateur a coché "réduire les animations",
+   on coupe toutes les transitions */
+@media (prefers-reduced-motion: reduce) {
+
+  * { transition: none !important; animation: none !important; }
+}
+
+/* =========================================================
+   4) CONTENEUR PRINCIPAL
+========================================================= */
+.appShell {
+  width: 100%;
+  max-width: 1900px;
+  margin: 0 auto;
+  height: calc(100dvh - (var(--outer-pad) * 2));
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+/* =========================================================
+   5) BARRE DU HAUT (titre + horloge)
+========================================================= */
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.topBar h1 {
+  font-size: clamp(22px, 2vw, 38px);
+  margin-bottom: 2px;
+  line-height: 1.05;
+}
+
+.subtitle {
+  color: var(--text-soft);
+  font-size: clamp(12px, 0.9vw, 16px);
+}
+
+.clockBox {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 8px 16px;
+  min-width: 110px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.clockLabel {
+  font-size: 11px;
+  color: var(--text-soft);
+  margin-bottom: 2px;
+}
+
+.clock {
+  font-size: clamp(24px, 1.8vw, 36px);
+  font-weight: bold;
+  line-height: 1;
+
+  /* Optimisation rendu : le navigateur sait que le contenu change souvent */
+  will-change: contents;
+}
+
+/* =========================================================
+   6) GRILLE PRINCIPALE DU DASHBOARD
+   2 colonnes × 3 lignes
+========================================================= */
+.dashboardGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows:
+    var(--row-top-height)
+    minmax(var(--row-middle-min), 1.3fr)
+    minmax(var(--row-bottom-min), 1fr);
+  gap: var(--gap);
+}
+
+/* =========================================================
+   7) STYLE COMMUN DES PANNEAUX (glassmorphism)
+========================================================= */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.20);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  /* Isole le repaint du panneau du reste de la page : grosse optim perf
+*/
+  contain: layout style;
+}
+
+/* =========================================================
+   8) POSITIONNEMENT DES BLOCS DANS LA GRILLE
+========================================================= */
+/* Bandeau du haut : occupe les 2 colonnes */
+.heroPanel {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Capteurs locaux : colonne gauche, ligne du milieu */
+.leftPanel { grid-column: 1; grid-row: 2; }
+
+/* Météo externe : colonne droite, ligne du milieu */
+.rightPanel {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+
+  grid-template-rows: auto auto auto 1fr;
+  min-height: 0;
+}
+
+/* Carte : colonne gauche, ligne du bas */
+.mapPanel {
+  grid-column: 1;
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Graphique : colonne droite, ligne du bas */
+.chartPanel {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* =========================================================
+   9) TITRES DE BLOCS
+========================================================= */
+.heroLeft, .heroRight { min-width: 0; }
+
+.smallTitle, .boxTitle {
+  color: var(--text-soft);
+  font-size: clamp(12px, 0.8vw, 14px);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+/* =========================================================
+   10) BLOC TEMPÉRATURE PRINCIPALE
+========================================================= */
+.tempRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tempBlock { min-width: 0; }
+
+.temp {
+  font-size: var(--temp-main-size);
+  font-weight: bold;
+  line-height: 0.95;
+  word-break: break-word;
+}
+
+.tempLabel {
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: var(--temp-label-size);
+  line-height: 1.2;
+}
+
+.emoji {
+  font-size: var(--emoji-size);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   11) BADGE DE STATUT
+========================================================= */
+.statusBadge {
+  justify-self: end;
+  background: rgba(59,130,246,0.18);
+  border: 1px solid rgba(96,165,250,0.35);
+  color: #dbeafe;
+  padding: 8px 12px;
+  border-radius: 14px;
+  max-width: 100%;
+  word-break: break-word;
+  font-size: clamp(11px, 0.8vw, 14px);
+  line-height: 1.25;
+}
+
+/* =========================================================
+   12) BOUTONS PILULE
+========================================================= */
+.btnCol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pill {
+  border: none;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: var(--button-text-size);
+  transition: transform .2s ease, opacity .2s ease;
+  white-space: nowrap;
+}
+
+.pill:hover { transform: translateY(-1px); opacity: .95; }
+
+.pill.active {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.15) inset;
+}
+
+.pill:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   13) GRILLES DE CARTES (capteurs)
+
+========================================================= */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weatherStatsGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.statCard {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.statCard span {
+  display: block;
+  color: var(--text-soft);
+  font-size: var(--stat-label-size);
+  margin-bottom: 6px;
+  line-height: 1.15;
+}
+
+.statCard b {
+  display: block;
+  font-size: var(--stat-value-size);
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+/* =========================================================
+   14) FORMULAIRE MÉTÉO EXTERNE
+========================================================= */
+.weatherConfig {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.weatherConfig input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--input-bg);
+  color: white;
+  font-size: clamp(12px, 0.82vw, 15px);
+  outline: none;
+}
+
+.weatherConfig input::placeholder { color: #b7c6d8; }
+
+.weatherConfig input:focus-visible {
+
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96,165,250,0.3);
+}
+
+.weatherStatus {
+  margin-bottom: 10px;
+  color: var(--text-soft);
+  font-size: clamp(11px, 0.75vw, 14px);
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+/* =========================================================
+   15) ZONE SCROLLABLE INTERNE
+========================================================= */
+.panelScroll {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.weatherContent { min-height: 0; }
+
+/* =========================================================
+   16) EN-TÊTE DE LA MÉTÉO EXTERNE
+========================================================= */
+.weatherHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.weatherHeader > div:first-child { min-width: 0; flex: 1; }
+
+.weatherCity {
+  font-size: var(--weather-city-size);
+  font-weight: bold;
+  line-height: 1.05;
+  word-break: break-word;
+}
+
+.weatherDesc {
+  color: var(--text-soft);
+  text-transform: capitalize;
+  margin-top: 4px;
+  font-size: var(--weather-desc-size);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.weatherIconEmoji {
+  width: var(--weather-icon-box);
+  height: var(--weather-icon-box);
+  display: grid;
+  place-items: center;
+  font-size: var(--weather-icon-size);
+
+  line-height: 1;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.10);
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   17) CARTE ET GRAPHIQUE
+========================================================= */
+.map {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.chartWrap {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* =========================================================
+   18) SCROLLBAR DISCRÈTE
+========================================================= */
+.panelScroll::-webkit-scrollbar { width: 8px; }
+.panelScroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.05);
+  border-radius: 999px;
+}
+.panelScroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.18);
+  border-radius: 999px;
+}
+
+/* =========================================================
+   19) RESPONSIVE — Écrans bas (laptops)
+========================================================= */
+@media (max-height: 930px) {
+  :root {
+    --row-top-height: 110px;
+    --row-middle-min: 290px;
+    --row-bottom-min: 215px;
+    --temp-main-size: clamp(30px, 2.6vw, 46px);
+    --weather-city-size: clamp(16px, 1.35vw, 26px);
+    --stat-value-size: clamp(13px, 0.92vw, 18px);
+  }
+}
+
+/* =========================================================
+   20) RESPONSIVE — Écrans moyens
+
+========================================================= */
+@media (max-width: 1450px) {
+  .statsGrid, .weatherStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =========================================================
+   21) RESPONSIVE — Tablette / petit écran
+========================================================= */
+@media (max-width: 1100px) {
+  body { overflow: auto; }
+
+  .appShell {
+    height: auto;
+    min-height: calc(100dvh - (var(--outer-pad) * 2));
+  }
+
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .heroPanel, .leftPanel, .rightPanel, .mapPanel, .chartPanel {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .heroPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .panel { overflow: visible; }
+  .panelScroll, .weatherContent { overflow: visible; }
+  .statsGrid, .weatherStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .map, .chartWrap {
+    min-height: 260px;
+    height: 260px;
+  }
+}
+
+/* =========================================================
+   22) RESPONSIVE — Mobile
+========================================================= */
+@media (max-width: 650px) {
+  .topBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .clockBox { width: 100%; }
+  .btnCol { display: grid; grid-template-columns: 1fr 1fr; }
+  .pill { width: 100%; text-align: center; }
+  .statsGrid, .weatherStatsGrid { grid-template-columns: 1fr; }
+}
